@@ -728,6 +728,13 @@ config PARMAN
 config OBJAGG
 	tristate "objagg" if COMPILE_TEST
 
+config ARCH_HAS_FBXSERIAL
+	bool
+
+config FBXSERIAL
+	bool "fbxserial"
+	select CRC32
+
 endmenu
 
 config GENERIC_IOREMAP
