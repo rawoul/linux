@@ -236,10 +236,29 @@ struct atl1c_tpd_ext_desc {
 #define RRS_RXD_IS_VALID(word) \
 	((((word) >> RRS_RXD_UPDATED_SHIFT) & RRS_RXD_UPDATED_MASK) == 1)
 
+/* non-ip packet */
+#define RRS_PID_NONIP		0
+/* ipv4(only) */
+#define RRS_PID_IPV4		1
+/* tcp/ipv6 */
+#define RRS_PID_IPV6TCP		2
+/* tcp/ipv4 */
+#define RRS_PID_IPV4TCP		3
+/* udp/ipv6 */
+#define RRS_PID_IPV6UDP		4
+/* udp/ipv4 */
+#define RRS_PID_IPV4UDP		5
+/* ipv6(only) */
+#define RRS_PID_IPV6		6
+/* LLDP packet */
+#define RRS_PID_LLDP		7
+/* 1588 packet */
+#define RRS_PID_1588		8
+
 #define RRS_PACKET_PROT_IS_IPV4_ONLY(word) \
-	((((word) >> RRS_PROT_ID_SHIFT) & RRS_PROT_ID_MASK) == 1)
+	((((word) >> RRS_PROT_ID_SHIFT) & RRS_PROT_ID_MASK) == RRS_PID_IPV4)
 #define RRS_PACKET_PROT_IS_IPV6_ONLY(word) \
-	((((word) >> RRS_PROT_ID_SHIFT) & RRS_PROT_ID_MASK) == 6)
+	((((word) >> RRS_PROT_ID_SHIFT) & RRS_PROT_ID_MASK) == RRS_PID_IPV6)
 
 #define RRS_MT_PROT_ID_TCPUDP	BIT(19)
 
