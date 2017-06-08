@@ -1657,14 +1657,24 @@ static irqreturn_t atl1c_intr(int irq, void *data)
 }
 
 static inline void atl1c_rx_checksum(struct atl1c_adapter *adapter,
-		  struct sk_buff *skb, struct atl1c_recv_ret_status *prrs)
+		  struct sk_buff *skb, struct atl1c_recv_ret_status *rrs)
 {
-	/*
-	 * The pid field in RRS in not correct sometimes, so we
-	 * cannot figure out if the packet is fragmented or not,
-	 * so we tell the KERNEL CHECKSUM_NONE
-	 */
 	skb_checksum_none_assert(skb);
+
+	if (adapter->netdev->features & NETIF_F_RXCSUM &&
+	    !(rrs->word3 & (cpu_to_le32(1 << RRS_ERR_L4_CSUM_SHIFT) |
+			    cpu_to_le32(1 << RRS_ERR_IP_CSUM_SHIFT)))) {
+		u8 pid = (le32_to_cpu(rrs->word3) >> RRS_PROT_ID_SHIFT) &
+			RRS_PROT_ID_MASK;
+		switch (pid) {
+		case RRS_PID_IPV4UDP:
+		case RRS_PID_IPV6UDP:
+		case RRS_PID_IPV4TCP:
+		case RRS_PID_IPV6TCP:
+			skb->ip_summed = CHECKSUM_UNNECESSARY;
+			break;
+		}
+	}
 }
 
 static struct sk_buff *atl1c_alloc_skb(struct atl1c_adapter *adapter,
@@ -2527,6 +2537,7 @@ static int atl1c_init_netdev(struct net_device *netdev, struct pci_dev *pdev)
 	/* TODO: add when ready */
 	netdev->hw_features =	NETIF_F_SG		|
 				NETIF_F_HW_CSUM		|
+				NETIF_F_RXCSUM		|
 				NETIF_F_HW_VLAN_CTAG_RX	|
 				NETIF_F_TSO		|
 				NETIF_F_TSO6;
