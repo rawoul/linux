@@ -863,10 +863,10 @@ static const struct dpu_pingpong_sub_blks sc7280_pp_sblk = {
 	}
 
 static const struct dpu_pingpong_cfg msm8998_pp[] = {
-	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0),
-	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0),
-	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, 0),
-	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, 0),
+	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0, sdm845_pp_sblk_te),
+	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0, sdm845_pp_sblk_te),
+	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, 0, sdm845_pp_sblk),
+	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, 0, sdm845_pp_sblk),
 };
 
 static const struct dpu_pingpong_cfg sdm845_pp[] = {
