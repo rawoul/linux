@@ -1671,6 +1671,11 @@ void _required_opps_available(struct dev_pm_opp *opp, int count)
 {
 	int i;
 
+	if (count > 0 && !opp->required_opps) {
+		opp->available = false;
+		return;
+	}
+
 	for (i = 0; i < count; i++) {
 		if (opp->required_opps[i]->available)
 			continue;
