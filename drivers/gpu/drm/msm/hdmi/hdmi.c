@@ -9,7 +9,244 @@
 #include <linux/of_gpio.h>
 
 #include <sound/hdmi-codec.h>
+#include "msm_kms.h"
 #include "hdmi.h"
+
+#ifdef CONFIG_DRM_MSM_HDMI_CEC
+
+static int msm_hdmi_cec_adap_enable(struct cec_adapter *adap, bool enable)
+{
+	struct hdmi *hdmi = adap->priv;
+
+	if (enable) {
+		/* 19.2Mhz * 0.00005 us = 960 = 0x3C0 */
+		hdmi_write(hdmi, REG_HDMI_CEC_REFTIMER, 0x3C0 | BIT(16));
+		hdmi_write(hdmi, REG_HDMI_CEC_RD_RANGE, 0x30AB9888);
+		hdmi_write(hdmi, REG_HDMI_CEC_WR_RANGE, 0x888AA888);
+		hdmi_write(hdmi, REG_HDMI_CEC_RD_START_RANGE, 0x88888888);
+		hdmi_write(hdmi, REG_HDMI_CEC_RD_TOTAL_RANGE, 0x99);
+		hdmi_write(hdmi, REG_HDMI_CEC_RD_ERR_RESP_LO, 0x4A);
+		hdmi_write(hdmi, REG_HDMI_CEC_COMPL_CTL, 0xF);
+		hdmi_write(hdmi, REG_HDMI_CEC_WR_CHECK_CONFIG, 0x4);
+		hdmi_write(hdmi, REG_HDMI_CEC_RD_FILTER, BIT(0) | (0x7FF << 4));
+		hdmi_write(hdmi, REG_HDMI_CEC_TIME, BIT(0) | ((7 * 0x30) << 7));
+
+		hdmi_write(hdmi, REG_HDMI_CEC_INT,
+			   HDMI_CEC_INT_TX_DONE_MASK |
+			   HDMI_CEC_INT_TX_ERROR_MASK |
+			   HDMI_CEC_INT_RX_DONE_MASK);
+
+		hdmi_write(hdmi, REG_HDMI_CEC_CTRL, 1);
+	} else {
+		hdmi_write(hdmi, REG_HDMI_CEC_INT, 0);
+		hdmi_write(hdmi, REG_HDMI_CEC_CTRL, 0);
+	}
+
+	return 0;
+}
+
+static int msm_hdmi_cec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
+{
+	struct hdmi *hdmi = adap->priv;
+
+	hdmi_write(hdmi, REG_HDMI_CEC_ADDR, logical_addr & 0xF);
+
+	return 0;
+}
+
+static int msm_hdmi_cec_adap_transmit(struct cec_adapter *adap, u8 attempts,
+				      u32 signal_free_time, struct cec_msg *msg)
+{
+	struct hdmi *hdmi = adap->priv;
+	u32 line_check_retry = 10;
+	u32 frame_type;
+	u8 retransmits;
+	int i;
+
+	/* toggle cec in order to flush out bad hw state, if any */
+	hdmi_write(hdmi, REG_HDMI_CEC_CTRL, 0);
+	hdmi_write(hdmi, REG_HDMI_CEC_CTRL, 1);
+
+	/* make sure state is cleared */
+	wmb();
+
+	retransmits = attempts ? (attempts - 1) : 0;
+	hdmi_write(hdmi, REG_HDMI_CEC_CEC_RETRANSMIT,
+		   (retransmits << 4) | BIT(0));
+
+	frame_type = cec_msg_is_broadcast(msg) ? 1 : 0;
+	for (i = 0; i < msg->len; i++) {
+		hdmi_write(hdmi, REG_HDMI_CEC_WR_DATA,
+			   (msg->msg[i] << 8) | frame_type);
+	}
+
+	/* check line status */
+	while ((hdmi_read(hdmi, REG_HDMI_CEC_STATUS) & BIT(0)) &&
+	       line_check_retry) {
+		line_check_retry--;
+		schedule();
+	}
+
+	if (!line_check_retry &&
+	    (hdmi_read(hdmi, REG_HDMI_CEC_STATUS) & BIT(0))) {
+		pr_err("CEC line is busy. Retry failed\n");
+		return -EBUSY;
+	}
+
+	hdmi->cec_tx_retransmits = retransmits;
+
+	/* start transmission */
+	hdmi_write(hdmi, REG_HDMI_CEC_CTRL, BIT(0) | BIT(1) |
+		   ((msg->len & 0x1F) << 4) | BIT(9));
+
+	return 0;
+}
+
+static const struct cec_adap_ops msm_hdmi_cec_adap_ops = {
+	.adap_enable = msm_hdmi_cec_adap_enable,
+	.adap_log_addr = msm_hdmi_cec_adap_log_addr,
+	.adap_transmit = msm_hdmi_cec_adap_transmit,
+};
+
+#define CEC_IRQ_FRAME_WR_DONE 0x01
+#define CEC_IRQ_FRAME_RD_DONE 0x02
+
+static void msm_hdmi_cec_handle_rx_done(struct hdmi *hdmi)
+{
+	struct cec_msg msg = {};
+	u32 data;
+	int i;
+
+	data = hdmi_read(hdmi, REG_HDMI_CEC_RD_DATA);
+	msg.len = (data & 0x1f00) >> 8;
+	if (msg.len < 1 || msg.len > CEC_MAX_MSG_SIZE)
+		return;
+
+	msg.msg[0] = data & 0xff;
+	for (i = 1; i < msg.len; i++)
+		msg.msg[i] = hdmi_read(hdmi, REG_HDMI_CEC_RD_DATA) & 0xff;
+
+	cec_received_msg(hdmi->cec_adap, &msg);
+}
+
+static void msm_hdmi_cec_handle_tx_done(struct hdmi *hdmi, u32 status)
+{
+	u32 tx_status = (status & HDMI_CEC_STATUS_TX_STATUS__MASK) >>
+		HDMI_CEC_STATUS_TX_STATUS__SHIFT;
+
+	switch (tx_status) {
+	case 0:
+		cec_transmit_done(hdmi->cec_adap,
+				  CEC_TX_STATUS_OK, 0, 0, 0, 0);
+		break;
+	case 1:
+		cec_transmit_done(hdmi->cec_adap,
+				  CEC_TX_STATUS_NACK, 0, 1, 0, 0);
+		break;
+	case 2:
+		cec_transmit_done(hdmi->cec_adap,
+				  CEC_TX_STATUS_ARB_LOST, 1, 0, 0, 0);
+		break;
+	case 3:
+		cec_transmit_done(hdmi->cec_adap,
+				  CEC_TX_STATUS_MAX_RETRIES |
+				  CEC_TX_STATUS_NACK,
+				  0, hdmi->cec_tx_retransmits + 1, 0, 0);
+		break;
+	default:
+		cec_transmit_done(hdmi->cec_adap,
+				  CEC_TX_STATUS_ERROR, 0, 0, 0, 1);
+		break;
+	}
+}
+
+static void msm_hdmi_cec_work(struct work_struct *work)
+{
+	struct hdmi *hdmi = container_of(work, struct hdmi, cec_work);
+
+	if (hdmi->cec_irq_status & CEC_IRQ_FRAME_WR_DONE)
+		msm_hdmi_cec_handle_tx_done(hdmi, hdmi->cec_tx_status);
+
+	if (hdmi->cec_irq_status & CEC_IRQ_FRAME_RD_DONE)
+		msm_hdmi_cec_handle_rx_done(hdmi);
+
+	hdmi->cec_irq_status = 0;
+	hdmi->cec_tx_status = 0;
+}
+
+void msm_hdmi_cec_irq(struct hdmi *hdmi)
+{
+	u32 int_status;
+
+	if (!hdmi->cec_adap)
+		return;
+
+	int_status = hdmi_read(hdmi, REG_HDMI_CEC_INT);
+
+	if (((int_status & HDMI_CEC_INT_TX_DONE) &&
+	     (int_status & HDMI_CEC_INT_TX_DONE_MASK)) ||
+	    ((int_status & HDMI_CEC_INT_TX_ERROR) &&
+	     (int_status & HDMI_CEC_INT_TX_ERROR_MASK))) {
+		hdmi->cec_tx_status = hdmi_read(hdmi, REG_HDMI_CEC_STATUS);
+		hdmi->cec_irq_status |= CEC_IRQ_FRAME_WR_DONE;
+	}
+
+	if ((int_status & HDMI_CEC_INT_RX_DONE) &&
+	    (int_status & HDMI_CEC_INT_RX_DONE_MASK))
+		hdmi->cec_irq_status |= CEC_IRQ_FRAME_RD_DONE;
+
+	hdmi_write(hdmi, REG_HDMI_CEC_INT, int_status);
+
+	queue_work(hdmi->workq, &hdmi->cec_work);
+}
+
+int msm_hdmi_cec_init(struct hdmi *hdmi)
+{
+	struct platform_device *pdev = hdmi->pdev;
+	int ret;
+
+	INIT_WORK(&hdmi->cec_work, msm_hdmi_cec_work);
+
+	hdmi->cec_adap = cec_allocate_adapter(&msm_hdmi_cec_adap_ops,
+					      hdmi, "msm",
+					      CEC_CAP_DEFAULTS |
+					      CEC_CAP_CONNECTOR_INFO, 1);
+	ret = PTR_ERR_OR_ZERO(hdmi->cec_adap);
+	if (ret < 0)
+		return ret;
+
+	/* Set the logical address to Unregistered */
+	hdmi_write(hdmi, REG_HDMI_CEC_ADDR, 0xf);
+
+	ret = cec_register_adapter(hdmi->cec_adap, &pdev->dev);
+	if (ret < 0)
+		goto err_delete_cec_adap;
+
+	return 0;
+
+err_delete_cec_adap:
+	cec_delete_adapter(hdmi->cec_adap);
+	return ret;
+}
+
+void msm_hdmi_cec_exit(struct hdmi *hdmi)
+{
+	cec_unregister_adapter(hdmi->cec_adap);
+}
+#else
+void msm_hdmi_cec_irq(struct hdmi *hdmi)
+{
+}
+
+int msm_hdmi_cec_init(struct hdmi *hdmi)
+{
+	return 0;
+}
+
+void msm_hdmi_cec_exit(struct hdmi *hdmi)
+{
+}
+#endif
 
 void msm_hdmi_set_mode(struct hdmi *hdmi, bool power_on)
 {
@@ -50,6 +287,9 @@ static irqreturn_t msm_hdmi_irq(int irq, void *dev_id)
 	if (hdmi->hdcp_ctrl)
 		msm_hdmi_hdcp_irq(hdmi->hdcp_ctrl);
 
+	/* Process CEC: */
+	msm_hdmi_cec_irq(hdmi);
+
 	/* TODO audio.. */
 
 	return IRQ_HANDLED;
@@ -65,6 +305,8 @@ static void msm_hdmi_destroy(struct hdmi *hdmi)
 		flush_workqueue(hdmi->workq);
 		destroy_workqueue(hdmi->workq);
 	}
+
+	msm_hdmi_cec_exit(hdmi);
 	msm_hdmi_hdcp_destroy(hdmi);
 
 	if (hdmi->phy_dev) {
@@ -259,6 +501,8 @@ static struct hdmi *msm_hdmi_init(struct platform_device *pdev)
 		dev_warn(&pdev->dev, "failed to init hdcp: disabled\n");
 		hdmi->hdcp_ctrl = NULL;
 	}
+
+	msm_hdmi_cec_init(hdmi);
 
 	return hdmi;
 

@@ -51,6 +51,14 @@ config DRM_MSM_GPU_SUDO
 	  Only use this if you are a driver developer.  This should *not*
 	  be enabled for production kernels.  If unsure, say N.
 
+config DRM_MSM_HDMI_CEC
+	bool "Enable HDMI CEC support in MSM DRM driver"
+	depends on DRM_MSM
+	select CEC_CORE
+	default y
+	help
+	  Choose this option to enable CEC support
+
 config DRM_MSM_HDMI_HDCP
 	bool "Enable HDMI HDCP support in MSM DRM driver"
 	depends on DRM_MSM && QCOM_SCM

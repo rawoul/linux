@@ -338,6 +338,9 @@ static enum drm_connector_status hdmi_connector_detect(
 		status = stat_gpio;
 	}
 
+	if (!status)
+		cec_phys_addr_invalidate(hdmi->cec_adap);
+
 	return status;
 }
 
@@ -371,6 +374,7 @@ static int msm_hdmi_connector_get_modes(struct drm_connector *connector)
 	drm_connector_update_edid_property(connector, edid);
 
 	if (edid) {
+		cec_s_phys_addr_from_edid(hdmi->cec_adap, edid);
 		ret = drm_add_edid_modes(connector, edid);
 		kfree(edid);
 	}
@@ -449,6 +453,12 @@ struct drm_connector *msm_hdmi_connector_init(struct hdmi *hdmi)
 	connector->doublescan_allowed = 0;
 
 	drm_connector_attach_encoder(connector, hdmi->encoder);
+
+	if (hdmi->cec_adap) {
+		struct cec_connector_info conn_info;
+		cec_fill_conn_info_from_drm(&conn_info, connector);
+		cec_s_conn_info(hdmi->cec_adap, &conn_info);
+	}
 
 	return connector;
 }
