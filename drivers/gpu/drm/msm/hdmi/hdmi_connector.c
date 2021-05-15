@@ -306,36 +306,39 @@ static enum drm_connector_status hdmi_connector_detect(
 	struct hdmi *hdmi = hdmi_connector->hdmi;
 	const struct hdmi_platform_config *config = hdmi->config;
 	struct hdmi_gpio_data hpd_gpio = config->gpios[HPD_GPIO_INDEX];
-	enum drm_connector_status stat_gpio, stat_reg;
+	enum drm_connector_status status, stat_gpio, stat_reg;
 	int retry = 20;
 
 	/*
 	 * some platforms may not have hpd gpio. Rely only on the status
 	 * provided by REG_HDMI_HPD_INT_STATUS in this case.
 	 */
-	if (!hpd_gpio.gpiod)
-		return detect_reg(hdmi);
+	if (!hpd_gpio.gpiod) {
+		status = detect_reg(hdmi);
+	} else {
+		do {
+			stat_gpio = detect_gpio(hdmi);
+			stat_reg  = detect_reg(hdmi);
 
-	do {
-		stat_gpio = detect_gpio(hdmi);
-		stat_reg  = detect_reg(hdmi);
+			if (stat_gpio == stat_reg)
+				break;
 
-		if (stat_gpio == stat_reg)
-			break;
+			mdelay(10);
+		} while (--retry);
 
-		mdelay(10);
-	} while (--retry);
+		/* the status we get from reading gpio seems to be more
+		 * reliable, so trust that one the most if we didn't manage to
+		 * get hdmi and gpio status to agree:
+		 */
+		if (stat_gpio != stat_reg) {
+			DBG("HDMI_HPD_INT_STATUS tells us: %d", stat_reg);
+			DBG("hpd gpio tells us: %d", stat_gpio);
+		}
 
-	/* the status we get from reading gpio seems to be more reliable,
-	 * so trust that one the most if we didn't manage to get hdmi and
-	 * gpio status to agree:
-	 */
-	if (stat_gpio != stat_reg) {
-		DBG("HDMI_HPD_INT_STATUS tells us: %d", stat_reg);
-		DBG("hpd gpio tells us: %d", stat_gpio);
+		status = stat_gpio;
 	}
 
-	return stat_gpio;
+	return status;
 }
 
 static void hdmi_connector_destroy(struct drm_connector *connector)
