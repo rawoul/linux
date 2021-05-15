@@ -262,5 +262,8 @@ enum drm_connector_status msm_hdmi_bridge_detect(
 		status = stat_gpio;
 	}
 
+	if (!status)
+		cec_phys_addr_invalidate(hdmi->cec_adap);
+
 	return status;
 }

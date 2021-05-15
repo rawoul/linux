@@ -13,6 +13,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hdmi.h>
+#include <media/cec.h>
 
 #include <drm/drm_bridge.h>
 
@@ -21,6 +22,7 @@
 
 struct hdmi_phy;
 struct hdmi_platform_config;
+struct cec_adapter;
 
 struct hdmi_audio {
 	bool enabled;
@@ -73,6 +75,12 @@ struct hdmi {
 	struct workqueue_struct *workq;
 
 	struct hdmi_hdcp_ctrl *hdcp_ctrl;
+
+	struct cec_adapter *cec_adap;
+	struct work_struct cec_work;
+	u32 cec_irq_status;
+	u32 cec_tx_status;
+	u32 cec_tx_retransmits;
 
 	/*
 	* spinlock to protect registers shared by different execution
