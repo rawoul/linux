@@ -2112,6 +2112,48 @@
 				drive-strength = <6>;
 				bias-disable;
 			};
+
+			hdmi_cec_active: hdmi-cec-active {
+				pins = "gpio31";
+				function = "hdmi_cec";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+
+			hdmi_cec_sleep: hdmi-cec-sleep {
+				pins = "gpio31";
+				function = "hdmi_cec";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+
+			hdmi_ddc_active: hdmi-ddc-active {
+				pins = "gpio32", "gpio33";
+				function = "hdmi_ddc";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+
+			hdmi_ddc_sleep: hdmi-ddc-sleep {
+				pins = "gpio32", "gpio33";
+				function = "hdmi_ddc";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+
+			hdmi_hpd_active: hdmi-hpd-active {
+				pins = "gpio34";
+				function = "hdmi_hot";
+				drive-strength = <16>;
+				bias-pull-down;
+			};
+
+			hdmi_hpd_sleep: hdmi-hpd-sleep {
+				pins = "gpio34";
+				function = "hdmi_hot";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
 		};
 
 		remoteproc_mss: remoteproc@4080000 {
@@ -3458,7 +3500,7 @@
 				 <&dsi0_phy 0>,
 				 <&dsi1_phy 1>,
 				 <&dsi1_phy 0>,
-				 <0>,
+				 <0>, //<&hdmi_phy 0>, //FIXME: hdmi phy drivers do not call devm_of_clk_add_hw_provider
 				 <0>,
 				 <0>,
 				 <0>;
@@ -3551,6 +3593,13 @@
 						reg = <1>;
 						dpu_intf2_out: endpoint {
 							remote-endpoint = <&dsi1_in>;
+						};
+					};
+
+					port@2 {
+						reg = <2>;
+						dpu_intf3_out: endpoint {
+							remote-endpoint = <&hdmi_in>;
 						};
 					};
 				};
@@ -3719,6 +3768,94 @@
 					 <&rpmcc RPM_SMD_XO_CLK_SRC>;
 				clock-names = "iface", "ref";
 				power-domains = <&rpmpd MSM8998_VDDMX>;
+
+				status = "disabled";
+			};
+
+			hdmi: hdmi-tx@c9a0000 {
+				compatible = "qcom,hdmi-tx-8998";
+				reg =	<0x0c9a0000 0x50c>,
+					<0x00780000 0x621c>,
+					<0x0c9e0000 0x28>;
+				reg-names = "core_physical",
+					    "qfprom_physical",
+					    "hdcp_physical";
+
+				interrupt-parent = <&mdss>;
+				interrupts = <8 IRQ_TYPE_LEVEL_HIGH>;
+
+				clocks = <&mmcc MDSS_MDP_CLK>,
+					 <&mmcc MNOC_AHB_CLK>,
+					 <&mmcc MDSS_AHB_CLK>,
+					 <&mmcc MDSS_AXI_CLK>,
+					 <&mmcc MISC_AHB_CLK>,
+					 <&mmcc MDSS_HDMI_CLK>,
+					 <&mmcc MDSS_HDMI_DP_AHB_CLK>,
+					 <&mmcc MDSS_EXTPCLK_CLK>;
+				clock-names =
+					"mdp_core",
+					"mnoc",
+					"iface",
+					"bus",
+					"iface_mmss",
+					"core",
+					"alt_iface",
+					"extp";
+
+				phys = <&hdmi_phy>;
+				phy-names = "hdmi_phy";
+
+				power-domains = <&rpmpd MSM8998_VDDCX>, <&mmcc MDSS_GDSC>;
+
+				pinctrl-names = "default", "sleep";
+				pinctrl-0 = <&hdmi_hpd_active
+					     &hdmi_ddc_active
+					     &hdmi_cec_active>;
+				pinctrl-1 = <&hdmi_hpd_sleep
+					     &hdmi_ddc_sleep
+					     &hdmi_cec_sleep>;
+
+				#sound-dai-cells = <1>;
+				status = "disabled";
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+						hdmi_in: endpoint {
+							remote-endpoint = <&dpu_intf3_out>;
+						};
+					};
+				};
+			};
+
+			hdmi_phy: hdmi-phy@c9a0600 {
+				compatible = "qcom,hdmi-phy-8998";
+				// FIXME: verify sizes
+				reg = <0x0c9a0600 0x1c4>,
+				      <0x0c9a0a00 0x124>,
+				      <0x0c9a0c00 0x124>,
+				      <0x0c9a0e00 0x124>,
+				      <0x0c9a1000 0x124>,
+				      <0x0c9a1200 0x0e4>;
+				reg-names = "hdmi_pll",
+					    "hdmi_tx_l0",
+					    "hdmi_tx_l1",
+					    "hdmi_tx_l2",
+					    "hdmi_tx_l3",
+					    "hdmi_phy";
+
+				#clock-cells = <0>;
+				#phy-cells = <0>;
+
+				clocks = <&mmcc MDSS_AHB_CLK>,
+					 <&gcc GCC_HDMI_CLKREF_CLK>,
+					 <&rpmcc RPM_SMD_LN_BB_CLK1>;
+				clock-names = "iface", "ref", "ref_src";
+				power-domains = <&rpmpd MSM8998_VDDMX>,
+						<&mmcc MDSS_GDSC>;
 
 				status = "disabled";
 			};
