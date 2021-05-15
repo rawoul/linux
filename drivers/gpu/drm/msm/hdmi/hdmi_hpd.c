@@ -230,34 +230,37 @@ enum drm_connector_status msm_hdmi_bridge_detect(
 {
 	struct hdmi_bridge *hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = hdmi_bridge->hdmi;
-	enum drm_connector_status stat_gpio, stat_reg;
+	enum drm_connector_status status, stat_gpio, stat_reg;
 	int retry = 20;
 
 	/*
 	 * some platforms may not have hpd gpio. Rely only on the status
 	 * provided by REG_HDMI_HPD_INT_STATUS in this case.
 	 */
-	if (!hdmi->hpd_gpiod)
-		return detect_reg(hdmi);
+	if (!hdmi->hpd_gpiod) {
+		status = detect_reg(hdmi);
+	} else {
+		do {
+			stat_gpio = detect_gpio(hdmi);
+			stat_reg  = detect_reg(hdmi);
 
-	do {
-		stat_gpio = detect_gpio(hdmi);
-		stat_reg  = detect_reg(hdmi);
+			if (stat_gpio == stat_reg)
+				break;
 
-		if (stat_gpio == stat_reg)
-			break;
+			mdelay(10);
+		} while (--retry);
 
-		mdelay(10);
-	} while (--retry);
+		/* the status we get from reading gpio seems to be more
+		 * reliable, so trust that one the most if we didn't manage to
+		 * get hdmi and gpio status to agree:
+		 */
+		if (stat_gpio != stat_reg) {
+			DBG("HDMI_HPD_INT_STATUS tells us: %d", stat_reg);
+			DBG("hpd gpio tells us: %d", stat_gpio);
+		}
 
-	/* the status we get from reading gpio seems to be more reliable,
-	 * so trust that one the most if we didn't manage to get hdmi and
-	 * gpio status to agree:
-	 */
-	if (stat_gpio != stat_reg) {
-		DBG("HDMI_HPD_INT_STATUS tells us: %d", stat_reg);
-		DBG("hpd gpio tells us: %d", stat_gpio);
+		status = stat_gpio;
 	}
 
-	return stat_gpio;
+	return status;
 }
