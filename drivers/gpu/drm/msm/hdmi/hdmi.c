@@ -525,6 +525,7 @@ int msm_hdmi_modeset_init(struct hdmi *hdmi,
 		struct drm_device *dev, struct drm_encoder *encoder)
 {
 	struct msm_drm_private *priv = dev->dev_private;
+	struct msm_kms *kms = priv->kms;
 	struct platform_device *pdev = hdmi->pdev;
 	int ret;
 
@@ -570,6 +571,9 @@ int msm_hdmi_modeset_init(struct hdmi *hdmi,
 		DRM_DEV_ERROR(&hdmi->pdev->dev, "failed to enable HPD: %d\n", ret);
 		goto fail;
 	}
+
+	if (encoder && kms->funcs->set_encoder_mode)
+		kms->funcs->set_encoder_mode(kms, encoder, false);
 
 	priv->bridges[priv->num_bridges++]       = hdmi->bridge;
 	priv->connectors[priv->num_connectors++] = hdmi->connector;

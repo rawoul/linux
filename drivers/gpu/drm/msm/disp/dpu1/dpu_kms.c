@@ -526,6 +526,33 @@ static int _dpu_kms_initialize_displayport(struct drm_device *dev,
 	return rc;
 }
 
+static int _dpu_kms_initialize_hdmi(struct drm_device *dev,
+				    struct msm_drm_private *priv,
+				    struct dpu_kms *dpu_kms)
+{
+	struct drm_encoder *encoder = NULL;
+	int rc = 0;
+
+	if (!priv->hdmi)
+		return rc;
+
+	encoder = dpu_encoder_init(dev, INTF_HDMI);
+	if (IS_ERR(encoder)) {
+		DPU_ERROR("encoder init failed for hdmi display\n");
+		return PTR_ERR(encoder);
+	}
+
+	rc = msm_hdmi_modeset_init(priv->hdmi, dev, encoder);
+	if (rc) {
+		DPU_ERROR("modeset_init failed for HDMI, rc = %d\n", rc);
+		drm_encoder_cleanup(encoder);
+		return rc;
+	}
+
+	priv->encoders[priv->num_encoders++] = encoder;
+	return rc;
+}
+
 /**
  * _dpu_kms_setup_displays - create encoders, bridges and connectors
  *                           for underlying displays
@@ -549,6 +576,12 @@ static int _dpu_kms_setup_displays(struct drm_device *dev,
 	rc = _dpu_kms_initialize_displayport(dev, priv, dpu_kms);
 	if (rc) {
 		DPU_ERROR("initialize_DP failed, rc = %d\n", rc);
+		return rc;
+	}
+
+	rc = _dpu_kms_initialize_hdmi(dev, priv, dpu_kms);
+	if (rc) {
+		DPU_ERROR("initialize_HDMI failed, rc = %d\n", rc);
 		return rc;
 	}
 
