@@ -130,12 +130,12 @@ void dpu_encoder_virt_runtime_resume(struct drm_encoder *encoder);
 /**
  * dpu_encoder_init - initialize virtual encoder object
  * @dev:        Pointer to drm device structure
- * @disp_info:  Pointer to display information structure
+ * @intf_type:  Interface type
  * Returns:     Pointer to newly created drm encoder
  */
 struct drm_encoder *dpu_encoder_init(
 		struct drm_device *dev,
-		int drm_enc_mode);
+		enum dpu_intf_type intf_type);
 
 /**
  * dpu_encoder_setup - setup dpu_encoder for the display probed

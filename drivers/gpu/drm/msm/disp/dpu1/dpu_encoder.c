@@ -192,6 +192,7 @@ struct dpu_encoder_virt {
 	struct timer_list frame_done_timer;
 	struct timer_list vsync_event_timer;
 
+	enum dpu_intf_type intf_type;
 	struct msm_display_info disp_info;
 
 	bool idle_pc_supported;
@@ -2240,7 +2241,6 @@ static int dpu_encoder_setup_display(struct dpu_encoder_virt *dpu_enc,
 {
 	int ret = 0;
 	int i = 0;
-	enum dpu_intf_type intf_type = INTF_NONE;
 	struct dpu_enc_phys_init_params phys_params;
 
 	if (!dpu_enc) {
@@ -2255,18 +2255,6 @@ static int dpu_encoder_setup_display(struct dpu_encoder_virt *dpu_enc,
 	phys_params.parent = &dpu_enc->base;
 	phys_params.parent_ops = &dpu_encoder_parent_ops;
 	phys_params.enc_spinlock = &dpu_enc->enc_spinlock;
-
-	switch (disp_info->intf_type) {
-	case DRM_MODE_ENCODER_DSI:
-		intf_type = INTF_DSI;
-		break;
-	case DRM_MODE_ENCODER_TMDS:
-		intf_type = INTF_DP;
-		break;
-	case DRM_MODE_ENCODER_VIRTUAL:
-		intf_type = INTF_WB;
-		break;
-	}
 
 	WARN_ON(disp_info->num_of_h_tiles < 1);
 
@@ -2300,11 +2288,11 @@ static int dpu_encoder_setup_display(struct dpu_encoder_virt *dpu_enc,
 				i, controller_id, phys_params.split_role);
 
 		phys_params.intf_idx = dpu_encoder_get_intf(dpu_kms->catalog,
-													intf_type,
-													controller_id);
+							    dpu_enc->intf_type,
+							    controller_id);
 
 		phys_params.wb_idx = dpu_encoder_get_wb(dpu_kms->catalog,
-				intf_type, controller_id);
+				dpu_enc->intf_type, controller_id);
 		/*
 		 * The phys_params might represent either an INTF or a WB unit, but not
 		 * both of them at the same time.
@@ -2312,14 +2300,14 @@ static int dpu_encoder_setup_display(struct dpu_encoder_virt *dpu_enc,
 		if ((phys_params.intf_idx == INTF_MAX) &&
 				(phys_params.wb_idx == WB_MAX)) {
 			DPU_ERROR_ENC(dpu_enc, "could not get intf or wb: type %d, id %d\n",
-						  intf_type, controller_id);
+						  dpu_enc->intf_type, controller_id);
 			ret = -EINVAL;
 		}
 
 		if ((phys_params.intf_idx != INTF_MAX) &&
 				(phys_params.wb_idx != WB_MAX)) {
 			DPU_ERROR_ENC(dpu_enc, "both intf and wb present: type %d, id %d\n",
-						  intf_type, controller_id);
+						  dpu_enc->intf_type, controller_id);
 			ret = -EINVAL;
 		}
 
@@ -2419,11 +2407,11 @@ int dpu_encoder_setup(struct drm_device *dev, struct drm_encoder *enc,
 	timer_setup(&dpu_enc->frame_done_timer,
 			dpu_encoder_frame_done_timeout, 0);
 
-	if (disp_info->intf_type == DRM_MODE_ENCODER_DSI)
+	if (dpu_enc->intf_type == INTF_DSI)
 		timer_setup(&dpu_enc->vsync_event_timer,
 				dpu_encoder_vsync_event_handler,
 				0);
-	else if (disp_info->intf_type == DRM_MODE_ENCODER_TMDS)
+	else if (dpu_enc->intf_type == INTF_DP)
 		dpu_enc->wide_bus_en = msm_dp_wide_bus_available(
 				priv->dp[disp_info->h_tile_instance[0]]);
 
@@ -2451,15 +2439,27 @@ fail:
 }
 
 struct drm_encoder *dpu_encoder_init(struct drm_device *dev,
-		int drm_enc_mode)
+				     enum dpu_intf_type intf_type)
 {
 	struct dpu_encoder_virt *dpu_enc = NULL;
+	int drm_enc_mode;
 	int rc = 0;
 
 	dpu_enc = devm_kzalloc(dev->dev, sizeof(*dpu_enc), GFP_KERNEL);
 	if (!dpu_enc)
 		return ERR_PTR(-ENOMEM);
 
+	switch (intf_type) {
+	case INTF_DSI:
+		drm_enc_mode = DRM_MODE_ENCODER_DSI;
+		break;
+	case INTF_WB:
+		drm_enc_mode = DRM_MODE_ENCODER_VIRTUAL;
+		break;
+	default:
+		drm_enc_mode = DRM_MODE_ENCODER_TMDS;
+		break;
+	}
 
 	rc = drm_encoder_init(dev, &dpu_enc->base, &dpu_encoder_funcs,
 							  drm_enc_mode, NULL);
@@ -2472,6 +2472,7 @@ struct drm_encoder *dpu_encoder_init(struct drm_device *dev,
 
 	spin_lock_init(&dpu_enc->enc_spinlock);
 	dpu_enc->enabled = false;
+	dpu_enc->intf_type = intf_type;
 	mutex_init(&dpu_enc->enc_lock);
 	mutex_init(&dpu_enc->rc_lock);
 
