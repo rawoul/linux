@@ -1243,7 +1243,7 @@ static void dpu_plane_sspp_atomic_update(struct drm_plane *plane)
 	_dpu_plane_set_qos_lut(plane, fb, &pipe_cfg);
 	_dpu_plane_set_danger_lut(plane, fb);
 
-	if (plane->type != DRM_PLANE_TYPE_CURSOR) {
+	if (pdpu->pipe_hw->cap->type != SSPP_TYPE_CURSOR) {
 		_dpu_plane_set_qos_ctrl(plane, true, DPU_PLANE_QOS_PANIC_CTRL);
 		_dpu_plane_set_ot_limit(plane, crtc, &pipe_cfg);
 	}
