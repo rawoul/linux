@@ -399,9 +399,9 @@ static const struct dpu_mdp_cfg msm8998_mdp[] = {
 	.clk_ctrls[DPU_CLK_CTRL_DMA3] = {
 			.reg_off = 0x2C4, .bit_off = 12},
 	.clk_ctrls[DPU_CLK_CTRL_CURSOR0] = {
-			.reg_off = 0x3A8, .bit_off = 15},
+			.reg_off = 0x3A8, .bit_off = 16},
 	.clk_ctrls[DPU_CLK_CTRL_CURSOR1] = {
-			.reg_off = 0x3B0, .bit_off = 15},
+			.reg_off = 0x3B0, .bit_off = 16},
 	},
 };
 
