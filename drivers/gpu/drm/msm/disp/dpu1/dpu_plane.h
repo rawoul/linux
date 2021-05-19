@@ -65,6 +65,13 @@ struct dpu_multirect_plane_states {
 enum dpu_sspp dpu_plane_pipe(struct drm_plane *plane);
 
 /**
+ * dpu_plane_pipe_type - return sspp type for the given plane
+ * @plane:   Pointer to DRM plane object
+ * Returns: sspp type of the given plane
+ */
+enum dpu_sspp_type dpu_plane_pipe_type(struct drm_plane *plane);
+
+/**
  * is_dpu_plane_virtual - check for virtual plane
  * @plane: Pointer to DRM plane object
  * returns: true - if the plane is virtual

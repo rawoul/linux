@@ -1205,8 +1205,13 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 
 		pstates[cnt].dpu_pstate = dpu_pstate;
 		pstates[cnt].drm_pstate = pstate;
-		pstates[cnt].stage = pstate->normalized_zpos;
 		pstates[cnt].pipe_id = dpu_plane_pipe(plane);
+		pstates[cnt].stage = pstate->normalized_zpos;
+
+		if (dpu_plane_pipe_type(plane) == SSPP_TYPE_CURSOR) {
+			/* enforce cursor sspp to use the last mixer stage */
+			pstates[cnt].stage = max_stages - 1;
+		}
 
 		dpu_pstate->needs_dirtyfb = needs_dirtyfb;
 
