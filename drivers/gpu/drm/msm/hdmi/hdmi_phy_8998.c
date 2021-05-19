@@ -29,6 +29,7 @@
 struct hdmi_pll_8998 {
 	struct platform_device *pdev;
 	struct clk_hw clk_hw;
+	unsigned long rate;
 
 	/* pll mmio base */
 	void __iomem *mmio_qserdes_com;
@@ -563,6 +564,7 @@ static int pll_calculate(unsigned long pix_clk, unsigned long ref_clk,
 static int hdmi_8998_pll_set_clk_rate(struct clk_hw *hw, unsigned long rate,
 				      unsigned long parent_rate)
 {
+	printk(KERN_INFO "hdmi_8998_pll_set_clk_rate %lu %lu\n", rate, parent_rate);
 	struct hdmi_pll_8998 *pll = hw_clk_to_pll(hw);
 	struct hdmi_phy *phy = pll_get_phy(pll);
 	struct hdmi_8998_phy_pll_reg_cfg cfg;
@@ -688,6 +690,8 @@ static int hdmi_8998_pll_set_clk_rate(struct clk_hw *hw, unsigned long rate,
 
 	DBG("Powered up PHY");
 
+	pll->rate = rate;
+
 	return 0;
 }
 
@@ -742,6 +746,7 @@ static int hdmi_8998_pll_lock_status(struct hdmi_pll_8998 *pll)
 
 static int hdmi_8998_pll_prepare(struct clk_hw *hw)
 {
+	printk(KERN_INFO "hdmi_8998_pll_prepare\n");
 	struct hdmi_pll_8998 *pll = hw_clk_to_pll(hw);
 	struct hdmi_phy *phy = pll_get_phy(pll);
 	int i, ret = 0;
@@ -804,7 +809,9 @@ static long hdmi_8998_pll_round_rate(struct clk_hw *hw,
 static unsigned long hdmi_8998_pll_recalc_rate(struct clk_hw *hw,
 					       unsigned long parent_rate)
 {
+	printk(KERN_INFO "hdmi_8998_pll_recalc_rate %lu\n", parent_rate);
 	struct hdmi_pll_8998 *pll = hw_clk_to_pll(hw);
+	return pll->rate;
 	u64 fdata;
 	u32 cmp1, cmp2, cmp3, pll_cmp;
 
@@ -823,6 +830,7 @@ static unsigned long hdmi_8998_pll_recalc_rate(struct clk_hw *hw,
 
 static void hdmi_8998_pll_unprepare(struct clk_hw *hw)
 {
+	printk(KERN_INFO "hdmi_8998_pll_unprepare\n");
 	struct hdmi_pll_8998 *pll = hw_clk_to_pll(hw);
 	struct hdmi_phy *phy = pll_get_phy(pll);
 
@@ -898,6 +906,13 @@ int msm_hdmi_pll_8998_init(struct platform_device *pdev)
 	ret = devm_clk_hw_register(dev, &pll->clk_hw);
 	if (ret) {
 		DRM_DEV_ERROR(dev, "failed to register pll clock\n");
+		return ret;
+	}
+
+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get,
+					  &pll->clk_hw);
+	if (ret) {
+		DRM_DEV_ERROR(dev, "failed to register clk provider: %d\n", ret);
 		return ret;
 	}
 
