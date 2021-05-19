@@ -559,6 +559,19 @@ static const struct dpu_ctl_cfg sc7280_ctl[] = {
 	.virt_num_formats = ARRAY_SIZE(plane_formats), \
 	}
 
+#define _CURSOR_SBLK(num) \
+	{ \
+	.maxdwnscale = SSPP_UNITY_SCALE, \
+	.maxupscale = SSPP_UNITY_SCALE, \
+	.smart_dma_priority = 0, \
+	.src_blk = {.name = STRCAT("sspp_src_", num), \
+		.id = DPU_SSPP_SRC, .base = 0x00, .len = 0x150,}, \
+	.format_list = cursor_formats, \
+	.num_formats = ARRAY_SIZE(cursor_formats), \
+	.virt_format_list = cursor_formats, \
+	.virt_num_formats = ARRAY_SIZE(cursor_formats), \
+	}
+
 static const struct dpu_sspp_sub_blks msm8998_vig_sblk_0 =
 				_VIG_SBLK("0", 0, DPU_SSPP_SCALER_QSEED3);
 static const struct dpu_sspp_sub_blks msm8998_vig_sblk_1 =
@@ -581,6 +594,11 @@ static const struct dpu_sspp_sub_blks sdm845_dma_sblk_0 = _DMA_SBLK("8", 1);
 static const struct dpu_sspp_sub_blks sdm845_dma_sblk_1 = _DMA_SBLK("9", 2);
 static const struct dpu_sspp_sub_blks sdm845_dma_sblk_2 = _DMA_SBLK("10", 3);
 static const struct dpu_sspp_sub_blks sdm845_dma_sblk_3 = _DMA_SBLK("11", 4);
+
+static const struct dpu_sspp_sub_blks msm8998_cursor_sblk_0 =
+				_CURSOR_SBLK("12");
+static const struct dpu_sspp_sub_blks msm8998_cursor_sblk_1 =
+				_CURSOR_SBLK("13");
 
 #define SSPP_BLK(_name, _id, _base, _features, \
 		_sblk, _xinid, _type, _clkctrl) \
@@ -607,10 +625,14 @@ static const struct dpu_sspp_cfg msm8998_sspp[] = {
 		sdm845_dma_sblk_0, 1, SSPP_TYPE_DMA, DPU_CLK_CTRL_DMA0),
 	SSPP_BLK("sspp_9", SSPP_DMA1, 0x26000,  DMA_MSM8998_MASK,
 		sdm845_dma_sblk_1, 5, SSPP_TYPE_DMA, DPU_CLK_CTRL_DMA1),
-	SSPP_BLK("sspp_10", SSPP_DMA2, 0x28000,  DMA_CURSOR_MSM8998_MASK,
-		sdm845_dma_sblk_2, 9, SSPP_TYPE_DMA, DPU_CLK_CTRL_CURSOR0),
-	SSPP_BLK("sspp_11", SSPP_DMA3, 0x2a000,  DMA_CURSOR_MSM8998_MASK,
-		sdm845_dma_sblk_3, 13, SSPP_TYPE_DMA, DPU_CLK_CTRL_CURSOR1),
+	SSPP_BLK("sspp_10", SSPP_DMA2, 0x28000, DMA_MSM8998_MASK,
+		sdm845_dma_sblk_2, 9, SSPP_TYPE_DMA, DPU_CLK_CTRL_DMA2),
+	SSPP_BLK("sspp_11", SSPP_DMA3, 0x2a000, DMA_MSM8998_MASK,
+		sdm845_dma_sblk_3, 13, SSPP_TYPE_DMA, DPU_CLK_CTRL_DMA3),
+	SSPP_BLK("sspp_12", SSPP_CURSOR0, 0x34000, DMA_CURSOR_MSM8998_MASK,
+		msm8998_cursor_sblk_0, 2, SSPP_TYPE_CURSOR, DPU_CLK_CTRL_CURSOR0),
+	SSPP_BLK("sspp_13", SSPP_CURSOR1, 0x36000, DMA_CURSOR_MSM8998_MASK,
+		msm8998_cursor_sblk_1, 10, SSPP_TYPE_CURSOR, DPU_CLK_CTRL_CURSOR1),
 };
 
 static const struct dpu_sspp_cfg sdm845_sspp[] = {
