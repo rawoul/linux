@@ -1631,6 +1631,9 @@
 			power-domains = <&gcc PCIE_0_GDSC>;
 			iommu-map = <0x100 &anoc1_smmu 0x1480 1>;
 			perst-gpios = <&tlmm 35 GPIO_ACTIVE_LOW>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&pcie0_clkreq>;
 		};
 
 		pcie_phy: phy@1c06000 {
@@ -2153,6 +2156,13 @@
 				function = "hdmi_hot";
 				drive-strength = <2>;
 				bias-pull-down;
+			};
+
+			pcie0_clkreq: pcie0-clkreq {
+				pins = "gpio36";
+				function = "pci_e0";
+				drive-strength = <2>;
+				bias-pull-up;
 			};
 		};
 
