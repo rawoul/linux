@@ -49,6 +49,11 @@
 #define MIXER_SC7180_MASK \
 	(BIT(DPU_DIM_LAYER))
 
+#define PINGPONG_MSM8998_MASK 0
+
+#define PINGPONG_MSM8998_SPLIT_MASK \
+	(PINGPONG_MSM8998_MASK | BIT(DPU_PINGPONG_TE2))
+
 #define PINGPONG_SDM845_MASK BIT(DPU_PINGPONG_DITHER)
 
 #define PINGPONG_SDM845_SPLIT_MASK \
@@ -828,6 +833,14 @@ static const struct dpu_dspp_cfg sm8150_dspp[] = {
 /*************************************************************
  * PINGPONG sub blocks config
  *************************************************************/
+static const struct dpu_pingpong_sub_blks msm8998_pp_sblk_te = {
+	.te2 = {.id = DPU_PINGPONG_TE2, .base = 0x2000, .len = 0x0,
+		.version = 0x1},
+};
+
+static const struct dpu_pingpong_sub_blks msm8998_pp_sblk = {
+};
+
 static const struct dpu_pingpong_sub_blks sdm845_pp_sblk_te = {
 	.te2 = {.id = DPU_PINGPONG_TE2, .base = 0x2000, .len = 0x0,
 		.version = 0x1},
@@ -845,49 +858,76 @@ static const struct dpu_pingpong_sub_blks sc7280_pp_sblk = {
 	.len = 0x20, .version = 0x20000},
 };
 
-#define PP_BLK_TE(_name, _id, _base, _merge_3d, _sblk) \
+#define PP_BLK_TE(_name, _id, _base, _merge_3d, _mask, _sblk) \
 	{\
 	.name = _name, .id = _id, \
 	.base = _base, .len = 0xd4, \
-	.features = PINGPONG_SDM845_SPLIT_MASK, \
+	.features = _mask, \
 	.merge_3d = _merge_3d, \
 	.sblk = &_sblk \
 	}
-#define PP_BLK(_name, _id, _base, _merge_3d, _sblk) \
+#define PP_BLK(_name, _id, _base, _merge_3d, _mask, _sblk) \
 	{\
 	.name = _name, .id = _id, \
 	.base = _base, .len = 0xd4, \
-	.features = PINGPONG_SDM845_MASK, \
+	.features = _mask, \
 	.merge_3d = _merge_3d, \
 	.sblk = &_sblk \
 	}
 
 static const struct dpu_pingpong_cfg msm8998_pp[] = {
-	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0, sdm845_pp_sblk_te),
-	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0, sdm845_pp_sblk_te),
-	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, 0, sdm845_pp_sblk),
-	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, 0, sdm845_pp_sblk),
+	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0,
+		  PINGPONG_MSM8998_SPLIT_MASK, msm8998_pp_sblk_te),
+	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0,
+		  PINGPONG_MSM8998_SPLIT_MASK, msm8998_pp_sblk_te),
+	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, 0,
+	       PINGPONG_MSM8998_MASK, msm8998_pp_sblk),
+	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, 0,
+	       PINGPONG_MSM8998_MASK, msm8998_pp_sblk),
 };
 
 static const struct dpu_pingpong_cfg sdm845_pp[] = {
-	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0, sdm845_pp_sblk_te),
-	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0, sdm845_pp_sblk_te),
-	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, 0, sdm845_pp_sblk),
-	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, 0, sdm845_pp_sblk),
+	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0,
+		  PINGPONG_SDM845_SPLIT_MASK, sdm845_pp_sblk_te),
+	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0,
+		  PINGPONG_SDM845_SPLIT_MASK, sdm845_pp_sblk_te),
+	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, 0,
+	       PINGPONG_SDM845_MASK, sdm845_pp_sblk),
+	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, 0,
+	       PINGPONG_SDM845_MASK, sdm845_pp_sblk),
 };
 
 static struct dpu_pingpong_cfg sc7180_pp[] = {
-	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0, sdm845_pp_sblk_te),
-	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0, sdm845_pp_sblk_te),
+	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, 0,
+		  PINGPONG_SDM845_SPLIT_MASK, sdm845_pp_sblk_te),
+	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, 0,
+		  PINGPONG_SDM845_SPLIT_MASK, sdm845_pp_sblk_te),
+};
+
+static const struct dpu_pingpong_cfg sc7280_pp[] = {
+	PP_BLK("pingpong_0", PINGPONG_0, 0x59000, 0,
+	       PINGPONG_SDM845_MASK, sc7280_pp_sblk),
+	PP_BLK("pingpong_1", PINGPONG_1, 0x6a000, 0,
+	       PINGPONG_SDM845_MASK, sc7280_pp_sblk),
+	PP_BLK("pingpong_2", PINGPONG_2, 0x6b000, 0,
+	       PINGPONG_SDM845_MASK, sc7280_pp_sblk),
+	PP_BLK("pingpong_3", PINGPONG_3, 0x6c000, 0,
+	       PINGPONG_SDM845_MASK, sc7280_pp_sblk),
 };
 
 static const struct dpu_pingpong_cfg sm8150_pp[] = {
-	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, MERGE_3D_0, sdm845_pp_sblk_te),
-	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, MERGE_3D_0, sdm845_pp_sblk_te),
-	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, MERGE_3D_1, sdm845_pp_sblk),
-	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, MERGE_3D_1, sdm845_pp_sblk),
-	PP_BLK("pingpong_4", PINGPONG_4, 0x72000, MERGE_3D_2, sdm845_pp_sblk),
-	PP_BLK("pingpong_5", PINGPONG_5, 0x72800, MERGE_3D_2, sdm845_pp_sblk),
+	PP_BLK_TE("pingpong_0", PINGPONG_0, 0x70000, MERGE_3D_0,
+		  PINGPONG_SDM845_SPLIT_MASK, sdm845_pp_sblk_te),
+	PP_BLK_TE("pingpong_1", PINGPONG_1, 0x70800, MERGE_3D_0,
+		  PINGPONG_SDM845_SPLIT_MASK, sdm845_pp_sblk_te),
+	PP_BLK("pingpong_2", PINGPONG_2, 0x71000, MERGE_3D_1,
+	       PINGPONG_SDM845_MASK, sdm845_pp_sblk),
+	PP_BLK("pingpong_3", PINGPONG_3, 0x71800, MERGE_3D_1,
+	       PINGPONG_SDM845_MASK, sdm845_pp_sblk),
+	PP_BLK("pingpong_4", PINGPONG_4, 0x72000, MERGE_3D_2,
+	       PINGPONG_SDM845_MASK, sdm845_pp_sblk),
+	PP_BLK("pingpong_5", PINGPONG_5, 0x72800, MERGE_3D_2,
+	       PINGPONG_SDM845_MASK, sdm845_pp_sblk),
 };
 
 /*************************************************************
@@ -907,12 +947,6 @@ static const struct dpu_merge_3d_cfg sm8150_merge_3d[] = {
 	MERGE_3D_BLK("merge_3d_2", MERGE_3D_2, 0x83200),
 };
 
-static const struct dpu_pingpong_cfg sc7280_pp[] = {
-	PP_BLK("pingpong_0", PINGPONG_0, 0x59000, 0, sc7280_pp_sblk),
-	PP_BLK("pingpong_1", PINGPONG_1, 0x6a000, 0, sc7280_pp_sblk),
-	PP_BLK("pingpong_2", PINGPONG_2, 0x6b000, 0, sc7280_pp_sblk),
-	PP_BLK("pingpong_3", PINGPONG_3, 0x6c000, 0, sc7280_pp_sblk),
-};
 /*************************************************************
  * INTF sub blocks config
  *************************************************************/
