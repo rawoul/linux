@@ -306,6 +306,7 @@ static void dpu_hw_sspp_setup_format(struct dpu_hw_pipe *ctx,
 		switch (ctx->catalog->caps->ubwc_version) {
 		case DPU_HW_UBWC_VER_10:
 			/* TODO: UBWC v1 case */
+			/* FIXME: MSM8998: nothing downstream ? */
 			break;
 		case DPU_HW_UBWC_VER_20:
 			fast_clear = fmt->alpha_enable ? BIT(31) : 0;

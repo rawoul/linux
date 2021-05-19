@@ -3510,7 +3510,7 @@
 				 <&dsi0_phy 0>,
 				 <&dsi1_phy 1>,
 				 <&dsi1_phy 0>,
-				 <0>, //<&hdmi_phy 0>, //FIXME: hdmi phy drivers do not call devm_of_clk_add_hw_provider
+				 <&hdmi_phy 0>,
 				 <0>,
 				 <0>,
 				 <0>;
@@ -3572,16 +3572,21 @@
 
 				assigned-clocks = <&mmcc MDSS_MDP_CLK>,
 						  <&mmcc MDSS_VSYNC_CLK>;
+						  //<&mmcc MDSS_MDP_LUT_CLK>;
 				assigned-clock-rates = <412500000>,
 						       <19200000>;
+						       //<0>;
 
 				clocks = <&mmcc MDSS_AHB_CLK>,
 					 <&mmcc MDSS_AXI_CLK>,
 				         <&mmcc MNOC_AHB_CLK>,
 					 <&mmcc MDSS_MDP_CLK>,
+					 //<&mmcc MDSS_MDP_LUT_CLK>,
 					 <&mmcc MDSS_VSYNC_CLK>;
 				clock-names = "iface", "bus", "mnoc",
-					      "core", "vsync";
+					      "core",
+					      //"lut",
+					      "vsync";
 
 				interrupt-parent = <&mdss>;
 				interrupts = <0 IRQ_TYPE_LEVEL_HIGH>;
@@ -3817,6 +3822,10 @@
 
 				power-domains = <&rpmpd MSM8998_VDDCX>, <&mmcc MDSS_GDSC>;
 
+				//qcom,hdmi-tx-ddc-clk-gpios = <&tlmm 32 GPIO_ACTIVE_HIGH>;
+				//qcom,hdmi-tx-ddc-data-gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>;
+				//qcom,hdmi-tx-hpd-gpios = <&tlmm 34 GPIO_ACTIVE_HIGH>;
+
 				pinctrl-names = "default", "sleep";
 				pinctrl-0 = <&hdmi_hpd_active
 					     &hdmi_ddc_active
@@ -3828,15 +3837,9 @@
 				#sound-dai-cells = <1>;
 				status = "disabled";
 
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						hdmi_in: endpoint {
-							remote-endpoint = <&dpu_intf3_out>;
-						};
+				port {
+					hdmi_in: endpoint {
+						remote-endpoint = <&dpu_intf3_out>;
 					};
 				};
 			};
@@ -3857,7 +3860,7 @@
 					    "hdmi_tx_l3",
 					    "hdmi_phy";
 
-				#clock-cells = <0>;
+				#clock-cells = <1>;
 				#phy-cells = <0>;
 
 				clocks = <&mmcc MDSS_AHB_CLK>,

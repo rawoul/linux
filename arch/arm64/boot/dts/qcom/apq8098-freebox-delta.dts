@@ -15,18 +15,11 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <
-			&hdmi_en
 			&hdmi_fault
 			&force_test_mode
 			&usb_hub_rst
 			&spdif_src_sel
 			>;
-
-		hdmi-enable {
-			name = "hdmi-enable";
-			gpio = <&tlmm 17 GPIO_ACTIVE_HIGH>;
-			output-low;
-		};
 
 		hdmi-fault {
 			name = "hdmi-fault";

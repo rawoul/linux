@@ -393,6 +393,11 @@ static int msm_hdmi_connector_mode_valid(struct drm_connector *connector,
 	long actual, requested;
 
 	requested = 1000 * mode->clock;
+	if (requested > 340000000)
+		return MODE_CLOCK_RANGE;
+	if (mode->hdisplay > 2560)
+		return MODE_CLOCK_RANGE;
+
 	actual = kms->funcs->round_pixclk(kms,
 			requested, hdmi_connector->hdmi->encoder);
 

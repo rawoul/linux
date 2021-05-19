@@ -144,6 +144,7 @@ static int dpu_mdss_enable(struct msm_mdss *mdss)
 {
 	struct dpu_mdss *dpu_mdss = to_dpu_mdss(mdss);
 	struct dss_module_power *mp = &dpu_mdss->mp;
+	u32 hwver;
 	int ret;
 
 	ret = msm_dss_enable_clk(mp->clk_config, mp->num_clk, true);
@@ -156,7 +157,8 @@ static int dpu_mdss_enable(struct msm_mdss *mdss)
 	 * ubwc config is part of the "mdss" region which is not accessible
 	 * from the rest of the driver. hardcode known configurations here
 	 */
-	switch (readl_relaxed(dpu_mdss->mmio + HW_REV)) {
+	hwver = readl_relaxed(dpu_mdss->mmio + HW_REV);
+	switch (hwver) {
 	case DPU_HW_VER_500:
 	case DPU_HW_VER_501:
 		writel_relaxed(0x420, dpu_mdss->mmio + UBWC_STATIC);
@@ -172,6 +174,10 @@ static int dpu_mdss_enable(struct msm_mdss *mdss)
 		break;
 	case DPU_HW_VER_720:
 		writel_relaxed(0x101e, dpu_mdss->mmio + UBWC_STATIC);
+		break;
+	default:
+		/* FIXME: something to do for MSM8998 ? */
+		DPU_ERROR("unhandled DPU_HW_VER %x\n", hwver);
 		break;
 	}
 
