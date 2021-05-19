@@ -1140,6 +1140,7 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 									  crtc);
 	struct dpu_crtc *dpu_crtc = to_dpu_crtc(crtc);
 	struct dpu_crtc_state *cstate = to_dpu_crtc_state(crtc_state);
+	struct dpu_mdss_cfg *catalog = _dpu_crtc_get_kms(crtc)->catalog;
 	struct plane_state *pstates;
 
 	const struct drm_plane_state *pstate;
@@ -1147,6 +1148,7 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 	struct drm_display_mode *mode;
 
 	int cnt = 0, rc = 0, mixer_width = 0, i, z_pos;
+	int max_stages;
 
 	struct dpu_multirect_plane_states multirect_plane[DPU_STAGE_MAX * 2];
 	int multirect_count = 0;
@@ -1182,6 +1184,10 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 
 	crtc_rect.x2 = mode->hdisplay;
 	crtc_rect.y2 = mode->vdisplay;
+
+	max_stages = DPU_STAGE_MAX - DPU_STAGE_0;
+	if (catalog->mixer_count > 0)
+		max_stages = catalog->mixer[0].sblk->maxblendstages;
 
 	 /* get plane state for all drm planes associated with crtc state */
 	drm_atomic_crtc_state_for_each_plane_state(plane, pstate, crtc_state) {
@@ -1252,9 +1258,8 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
 		}
 
 		/* verify z_pos setting before using it */
-		if (z_pos >= DPU_STAGE_MAX - DPU_STAGE_0) {
-			DPU_ERROR("> %d plane stages assigned\n",
-					DPU_STAGE_MAX - DPU_STAGE_0);
+		if (z_pos >= max_stages) {
+			DPU_ERROR("> %d plane stages assigned\n", max_stages);
 			rc = -EINVAL;
 			goto end;
 		} else if (pstates[i].drm_pstate->crtc_x < mixer_width) {
