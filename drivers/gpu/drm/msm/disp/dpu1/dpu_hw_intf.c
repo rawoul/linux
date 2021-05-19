@@ -154,16 +154,8 @@ static void dpu_hw_intf_setup_timing_engine(struct dpu_hw_intf *ctx,
 	}
 
 	den_polarity = 0;
-	if (ctx->cap->type == INTF_HDMI) {
-		hsync_polarity = p->yres >= 720 ? 0 : 1;
-		vsync_polarity = p->yres >= 720 ? 0 : 1;
-	} else if (ctx->cap->type == INTF_DP) {
-		hsync_polarity = p->hsync_polarity;
-		vsync_polarity = p->vsync_polarity;
-	} else {
-		hsync_polarity = 0;
-		vsync_polarity = 0;
-	}
+	hsync_polarity = p->hsync_polarity;
+	vsync_polarity = p->vsync_polarity;
 	polarity_ctl = (den_polarity << 2) | /*  DEN Polarity  */
 		(vsync_polarity << 1) | /* VSYNC Polarity */
 		(hsync_polarity << 0);  /* HSYNC Polarity */
