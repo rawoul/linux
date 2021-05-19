@@ -825,8 +825,10 @@ static void clk_core_unprepare(struct clk_core *core)
 
 	trace_clk_unprepare(core);
 
-	if (core->ops->unprepare)
+	if (core->ops->unprepare) {
+		printk(KERN_INFO "unprepare clock %s\n", core->name);
 		core->ops->unprepare(core->hw);
+	}
 
 	clk_pm_runtime_put(core);
 
@@ -881,8 +883,10 @@ static int clk_core_prepare(struct clk_core *core)
 
 		trace_clk_prepare(core);
 
-		if (core->ops->prepare)
+		if (core->ops->prepare) {
 			ret = core->ops->prepare(core->hw);
+			printk(KERN_INFO "prepare clock %s: %d\n", core->name, ret);
+		}
 
 		trace_clk_prepare_complete(core);
 
@@ -961,8 +965,10 @@ static void clk_core_disable(struct clk_core *core)
 
 	trace_clk_disable_rcuidle(core);
 
-	if (core->ops->disable)
+	if (core->ops->disable) {
+		printk(KERN_INFO "disable clock %s\n", core->name);
 		core->ops->disable(core->hw);
+	}
 
 	trace_clk_disable_complete_rcuidle(core);
 
@@ -1020,8 +1026,10 @@ static int clk_core_enable(struct clk_core *core)
 
 		trace_clk_enable_rcuidle(core);
 
-		if (core->ops->enable)
+		if (core->ops->enable) {
 			ret = core->ops->enable(core->hw);
+			printk(KERN_INFO "enable clock %s: %d\n", core->name, ret);
+		}
 
 		trace_clk_enable_complete_rcuidle(core);
 

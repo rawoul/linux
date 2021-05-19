@@ -160,12 +160,21 @@ static int genpd_runtime_suspend(struct device *dev);
  */
 static struct generic_pm_domain *dev_to_genpd_safe(struct device *dev)
 {
-	if (IS_ERR_OR_NULL(dev) || IS_ERR_OR_NULL(dev->pm_domain))
+	if (IS_ERR_OR_NULL(dev)) {
+		dev_err(dev, "%s: dev is null\n", __func__);
 		return NULL;
+	}
+
+	if (IS_ERR_OR_NULL(dev->pm_domain)) {
+		dev_err(dev, "%s: dev has no pm_domain\n", __func__);
+		return NULL;
+	}
 
 	/* A genpd's always have its ->runtime_suspend() callback assigned. */
 	if (dev->pm_domain->ops.runtime_suspend == genpd_runtime_suspend)
 		return pd_to_genpd(dev->pm_domain);
+
+	dev_err(dev, "%s: dev has no runtime_suspend cb\n", __func__);
 
 	return NULL;
 }
@@ -402,8 +411,10 @@ int dev_pm_genpd_set_performance_state(struct device *dev, unsigned int state)
 	int ret;
 
 	genpd = dev_to_genpd_safe(dev);
-	if (!genpd)
+	if (!genpd) {
+		printk(KERN_ERR "blah!\n");
 		return -ENODEV;
+	}
 
 	if (WARN_ON(!dev->power.subsys_data ||
 		     !dev->power.subsys_data->domain_data))
@@ -1551,20 +1562,26 @@ static int genpd_add_device(struct generic_pm_domain *genpd, struct device *dev,
 	struct generic_pm_domain_data *gpd_data;
 	int ret;
 
-	dev_dbg(dev, "%s()\n", __func__);
+	dev_info(dev, "%s()\n", __func__);
 
-	if (IS_ERR_OR_NULL(genpd) || IS_ERR_OR_NULL(dev))
+	if (IS_ERR_OR_NULL(genpd) || IS_ERR_OR_NULL(dev)) {
+		dev_err(dev, "lol1\n");
 		return -EINVAL;
+	}
 
 	gpd_data = genpd_alloc_dev_data(dev);
-	if (IS_ERR(gpd_data))
+	if (IS_ERR(gpd_data)) {
+		dev_err(dev, "lol2\n");
 		return PTR_ERR(gpd_data);
+	}
 
 	gpd_data->cpu = genpd_get_cpu(genpd, base_dev);
 
 	ret = genpd->attach_dev ? genpd->attach_dev(genpd, dev) : 0;
-	if (ret)
+	if (ret) {
+		dev_err(dev, "lol3\n");
 		goto out;
+	}
 
 	genpd_lock(genpd);
 
@@ -1611,7 +1628,7 @@ static int genpd_remove_device(struct generic_pm_domain *genpd,
 	struct pm_domain_data *pdd;
 	int ret = 0;
 
-	dev_dbg(dev, "%s()\n", __func__);
+	dev_info(dev, "%s()\n", __func__);
 
 	pdd = dev->power.subsys_data->domain_data;
 	gpd_data = to_gpd_data(pdd);
@@ -2630,9 +2647,8 @@ static int __genpd_dev_pm_attach(struct device *dev, struct device *base_dev,
 	mutex_unlock(&gpd_list_lock);
 
 	if (ret < 0) {
-		if (ret != -EPROBE_DEFER)
-			dev_err(dev, "failed to add to PM domain %s: %d",
-				pd->name, ret);
+		dev_err(dev, "failed to add to PM domain %s: %d",
+			pd->name, ret);
 		return ret;
 	}
 
@@ -2642,6 +2658,7 @@ static int __genpd_dev_pm_attach(struct device *dev, struct device *base_dev,
 	if (power_on) {
 		genpd_lock(pd);
 		ret = genpd_power_on(pd, 0);
+		dev_info(dev, "%s: %d\n", __func__, ret);
 		genpd_unlock(pd);
 	}
 
