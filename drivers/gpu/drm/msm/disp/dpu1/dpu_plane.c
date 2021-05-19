@@ -1563,6 +1563,11 @@ enum dpu_sspp dpu_plane_pipe(struct drm_plane *plane)
 	return plane ? to_dpu_plane(plane)->pipe : SSPP_NONE;
 }
 
+enum dpu_sspp_type dpu_plane_pipe_type(struct drm_plane *plane)
+{
+	return plane ? to_dpu_plane(plane)->pipe_hw->cap->type : SSPP_TYPE_MAX;
+}
+
 bool is_dpu_plane_virtual(struct drm_plane *plane)
 {
 	return plane ? to_dpu_plane(plane)->is_virtual : false;
@@ -1579,6 +1584,7 @@ struct drm_plane *dpu_plane_init(struct drm_device *dev,
 	struct msm_drm_private *priv = dev->dev_private;
 	struct dpu_kms *kms = to_dpu_kms(priv->kms);
 	int zpos_max = DPU_ZPOS_MAX;
+	const uint64_t *format_modifiers;
 	uint32_t num_formats;
 	int ret = -EINVAL;
 
@@ -1631,9 +1637,14 @@ struct drm_plane *dpu_plane_init(struct drm_device *dev,
 		num_formats = pdpu->pipe_sblk->num_formats;
 	}
 
+	if (pdpu->pipe_hw->cap->type == SSPP_TYPE_CURSOR)
+		format_modifiers = NULL;
+	else
+		format_modifiers = supported_format_modifiers;
+
 	ret = drm_universal_plane_init(dev, plane, 0xff, &dpu_plane_funcs,
 				format_list, num_formats,
-				supported_format_modifiers, type, NULL);
+				format_modifiers, type, NULL);
 	if (ret)
 		goto clean_sspp;
 
@@ -1646,7 +1657,14 @@ struct drm_plane *dpu_plane_init(struct drm_device *dev,
 			zpos_max = DPU_STAGE_MAX - DPU_STAGE_0 - 1;
 	}
 
-	ret = drm_plane_create_zpos_property(plane, 0, 0, zpos_max);
+	if (pdpu->pipe_hw->cap->type == SSPP_TYPE_CURSOR) {
+		/* cursor SSPP can only be used in the last mixer stage,
+		 * enforce it by maxing out the cursor plane zpos */
+		ret = drm_plane_create_zpos_immutable_property(plane, zpos_max + 1);
+	} else {
+		ret = drm_plane_create_zpos_property(plane, 0, 0, zpos_max);
+	}
+
 	if (ret)
 		DPU_ERROR("failed to install zpos property, rc = %d\n", ret);
 
