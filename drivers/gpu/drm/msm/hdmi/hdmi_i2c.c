@@ -17,25 +17,23 @@ struct hdmi_i2c_adapter {
 static void init_ddc(struct hdmi_i2c_adapter *hdmi_i2c)
 {
 	struct hdmi *hdmi = hdmi_i2c->hdmi;
-	uint32_t ddc_speed;
 
 	hdmi_write(hdmi, REG_HDMI_DDC_CTRL,
 			HDMI_DDC_CTRL_SW_STATUS_RESET);
 	hdmi_write(hdmi, REG_HDMI_DDC_CTRL,
 			HDMI_DDC_CTRL_SOFT_RESET);
 
-	ddc_speed = hdmi_read(hdmi, REG_HDMI_DDC_SPEED);
-	ddc_speed |= HDMI_DDC_SPEED_THRESHOLD(2) |
-		HDMI_DDC_SPEED_PRESCALE(10);
-	hdmi_write(hdmi, REG_HDMI_DDC_SPEED, ddc_speed);
+	hdmi_write(hdmi, REG_HDMI_DDC_SPEED,
+			HDMI_DDC_SPEED_THRESHOLD(2) |
+			HDMI_DDC_SPEED_PRESCALE(10));
 
 	hdmi_write(hdmi, REG_HDMI_DDC_SETUP,
 			HDMI_DDC_SETUP_TIMEOUT(0xff));
 
-	/* enable reference timer for 19us */
+	/* enable reference timer for 27us */
 	hdmi_write(hdmi, REG_HDMI_DDC_REF,
 			HDMI_DDC_REF_REFTIMER_ENABLE |
-			HDMI_DDC_REF_REFTIMER(19));
+			HDMI_DDC_REF_REFTIMER(27));
 }
 
 static int ddc_clear_irq(struct hdmi_i2c_adapter *hdmi_i2c)
