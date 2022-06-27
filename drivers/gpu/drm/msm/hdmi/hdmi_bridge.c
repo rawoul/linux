@@ -277,6 +277,10 @@ static enum drm_mode_status msm_hdmi_bridge_mode_valid(struct drm_bridge *bridge
 	long actual, requested;
 
 	requested = 1000 * mode->clock;
+	if (requested > 340000000)
+		return MODE_CLOCK_RANGE;
+	if (mode->hdisplay > 2560)
+		return MODE_CLOCK_RANGE;
 
 	/* for mdp5/apq8074, we manage our own pixel clk (as opposed to
 	 * mdp4/dtv stuff where pixel clk is assigned to mdp/encoder
