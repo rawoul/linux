@@ -242,6 +242,22 @@ static const uint32_t wb2_formats[] = {
 	DRM_FORMAT_XBGR4444,
 };
 
+static const uint32_t cursor_formats[] = {
+	DRM_FORMAT_ARGB8888,
+	DRM_FORMAT_ABGR8888,
+	DRM_FORMAT_RGBA8888,
+	DRM_FORMAT_BGRA8888,
+	DRM_FORMAT_XRGB8888,
+	DRM_FORMAT_ARGB1555,
+	DRM_FORMAT_ABGR1555,
+	DRM_FORMAT_RGBA5551,
+	DRM_FORMAT_BGRA5551,
+	DRM_FORMAT_ARGB4444,
+	DRM_FORMAT_ABGR4444,
+	DRM_FORMAT_RGBA4444,
+	DRM_FORMAT_BGRA4444,
+};
+
 /*************************************************************
  * SSPP sub blocks config
  *************************************************************/
@@ -300,6 +316,19 @@ static const uint32_t wb2_formats[] = {
 	.virt_num_formats = ARRAY_SIZE(plane_formats), \
 	}
 
+#define _CURSOR_SBLK(num) \
+	{ \
+	.maxdwnscale = SSPP_UNITY_SCALE, \
+	.maxupscale = SSPP_UNITY_SCALE, \
+	.smart_dma_priority = 0, \
+	.src_blk = {.name = STRCAT("sspp_src_", num), \
+		.id = DPU_SSPP_SRC, .base = 0x00, .len = 0x150,}, \
+	.format_list = cursor_formats, \
+	.num_formats = ARRAY_SIZE(cursor_formats), \
+	.virt_format_list = cursor_formats, \
+	.virt_num_formats = ARRAY_SIZE(cursor_formats), \
+	}
+
 static const struct dpu_sspp_sub_blks msm8998_vig_sblk_0 =
 				_VIG_SBLK("0", 0, DPU_SSPP_SCALER_QSEED3);
 static const struct dpu_sspp_sub_blks msm8998_vig_sblk_1 =
@@ -308,6 +337,11 @@ static const struct dpu_sspp_sub_blks msm8998_vig_sblk_2 =
 				_VIG_SBLK("2", 0, DPU_SSPP_SCALER_QSEED3);
 static const struct dpu_sspp_sub_blks msm8998_vig_sblk_3 =
 				_VIG_SBLK("3", 0, DPU_SSPP_SCALER_QSEED3);
+
+static const struct dpu_sspp_sub_blks msm8998_cursor_sblk_0 =
+				_CURSOR_SBLK("12");
+static const struct dpu_sspp_sub_blks msm8998_cursor_sblk_1 =
+				_CURSOR_SBLK("13");
 
 static const struct dpu_rotation_cfg dpu_rot_sc7280_cfg_v2 = {
 	.rot_maxheight = 1088,
@@ -587,12 +621,12 @@ static const u32 sdm845_nrt_pri_lvl[] = {3, 3, 3, 3, 3, 3, 3, 3};
 
 static const struct dpu_vbif_dynamic_ot_cfg msm8998_ot_rdwr_cfg[] = {
 	{
-		.pps = 1088 * 1920 * 30,
+		.pps = 1920 * 1080 * 30,
 		.ot_limit = 2,
 	},
 	{
-		.pps = 1088 * 1920 * 60,
-		.ot_limit = 6,
+		.pps = 1920 * 1080 * 60,
+		.ot_limit = 4,
 	},
 	{
 		.pps = 3840 * 2160 * 30,
@@ -705,10 +739,7 @@ static const struct dpu_qos_lut_entry msm8998_qos_linear[] = {
 	{.fl = 10, .lut = 0x1555b},
 	{.fl = 11, .lut = 0x5555b},
 	{.fl = 12, .lut = 0x15555b},
-	{.fl = 13, .lut = 0x55555b},
-	{.fl = 14, .lut = 0},
-	{.fl = 1,  .lut = 0x1b},
-	{.fl = 0,  .lut = 0}
+	{.fl = 0,  .lut = 0x55555b}
 };
 
 static const struct dpu_qos_lut_entry sdm845_qos_linear[] = {
@@ -730,9 +761,7 @@ static const struct dpu_qos_lut_entry msm8998_qos_macrotile[] = {
 	{.fl = 10, .lut = 0x1aaff},
 	{.fl = 11, .lut = 0x5aaff},
 	{.fl = 12, .lut = 0x15aaff},
-	{.fl = 13, .lut = 0x55aaff},
-	{.fl = 1,  .lut = 0x1aaff},
-	{.fl = 0,  .lut = 0},
+	{.fl = 0,  .lut = 0x55aaff},
 };
 
 static const struct dpu_qos_lut_entry sc7180_qos_linear[] = {
